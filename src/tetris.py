@@ -432,5 +432,9 @@ def main():
     pygame.quit()
     sys.exit()
 
+def create_game():
+    game = Game()
+    return game, screen, clock
+
 if __name__ == "__main__":
     main()

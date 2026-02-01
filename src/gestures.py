@@ -5,8 +5,8 @@ import math
 
 # === Settings ===
 MODEL_PATH = "models/hand_landmarker.task"
-GESTURE_COOLDOWN_FRAMES = 30
-NEUTRAL_GESTURE_COOLDOWN_FRAMES = 10
+GESTURE_COOLDOWN_FRAMES = 10
+NEUTRAL_GESTURE_COOLDOWN_FRAMES = 5
 
 # --- Setup MediaPipe ---
 BaseOptions = mp.tasks.BaseOptions
@@ -64,53 +64,59 @@ def detect_gesture(frame):
     frame_count += 1
 
     gesture_text = ""
+    
+    # Draw landmarks on the frame
     if hand_landmarker_result.hand_landmarks:
         for hand_landmarks in hand_landmarker_result.hand_landmarks:
+            # Draw all 21 landmarks
+            for lm in hand_landmarks:
+                x_px = int(lm.x * w)
+                y_px = int(lm.y * h)
+                cv2.circle(frame, (x_px, y_px), 5, (0, 255, 0), -1)
 
             if cooldown > 0:
                 cooldown -= 1
-                continue
-            
-            # --- Gesture Detection ---
-            gesture_text = "NEUTRAL"
-            cooldown = NEUTRAL_GESTURE_COOLDOWN_FRAMES
-
-            # DROP (Fist)
-            if isFist(hand_landmarks):
-                gesture_text = "DROP"
-                cooldown = GESTURE_COOLDOWN_FRAMES
-
-            # ROTATE (Thumb-Pinky = Clockwise)
-            elif is_pinch_between(hand_landmarks, w, h, 4, 20):
-                gesture_text = "ROTATE CW"
-                cooldown = GESTURE_COOLDOWN_FRAMES
-            
-            # ROTATE (Thumb-Index = Counter-Clockwise)
-            elif is_pinch_between(hand_landmarks, w, h, 4, 8):
-                gesture_text = "ROTATE CCW"
-                cooldown = GESTURE_COOLDOWN_FRAMES
-
-            # MOVE (Horizontal Motion)
             else:
-                hand_label = hand_landmarker_result.handedness[0][0].category_name
-                thumb_x = hand_landmarks[4].x
-                pinky_x = hand_landmarks[20].x
+                # --- Gesture Detection ---
+                gesture_text = "NEUTRAL"
+                cooldown = NEUTRAL_GESTURE_COOLDOWN_FRAMES
 
-                # How sideways the hand is (bigger = more slap-like)
-                index_mcp = hand_landmarks[5]
-                pinky_mcp = hand_landmarks[17]
-                dx = pinky_mcp.x - index_mcp.x
-                dy = pinky_mcp.y - index_mcp.y
-                angle = abs(math.atan2(dy, dx))  # radians
-                angle = min(angle, math.pi - angle)  # mirror left/right
-                tilted = angle > math.radians(45)
-
-                if tilted:
-                    move_right = thumb_x < pinky_x
-                    if move_right:
-                        gesture_text = "MOVE RIGHT"
-                    else:
-                        gesture_text = "MOVE LEFT"
-
+                # DROP (Fist)
+                if isFist(hand_landmarks):
+                    gesture_text = "DROP"
                     cooldown = GESTURE_COOLDOWN_FRAMES
+
+                # ROTATE (Thumb-Pinky = Clockwise)
+                elif is_pinch_between(hand_landmarks, w, h, 4, 20):
+                    gesture_text = "ROTATE CW"
+                    cooldown = GESTURE_COOLDOWN_FRAMES
+                
+                # ROTATE (Thumb-Index = Counter-Clockwise)
+                elif is_pinch_between(hand_landmarks, w, h, 4, 8):
+                    gesture_text = "ROTATE CCW"
+                    cooldown = GESTURE_COOLDOWN_FRAMES
+
+                # MOVE (Horizontal Motion)
+                else:
+                    hand_label = hand_landmarker_result.handedness[0][0].category_name
+                    thumb_x = hand_landmarks[4].x
+                    pinky_x = hand_landmarks[20].x
+
+                    # How sideways the hand is (bigger = more slap-like)
+                    index_mcp = hand_landmarks[5]
+                    pinky_mcp = hand_landmarks[17]
+                    dx = pinky_mcp.x - index_mcp.x
+                    dy = pinky_mcp.y - index_mcp.y
+                    angle = abs(math.atan2(dy, dx))  # radians
+                    angle = min(angle, math.pi - angle)  # mirror left/right
+                    tilted = angle > math.radians(45)
+
+                    if tilted:
+                        move_right = thumb_x < pinky_x
+                        if move_right:
+                            gesture_text = "MOVE RIGHT"
+                        else:
+                            gesture_text = "MOVE LEFT"
+
+                        cooldown = GESTURE_COOLDOWN_FRAMES
     return gesture_text
