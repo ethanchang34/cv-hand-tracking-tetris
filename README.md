@@ -1,3 +1,6 @@
+## Demo
+https://github.com/user-attachments/assets/da482067-6a8d-4485-a647-cc3f14cab481
+
 # cv-hand-tracking-tetris
 Play Tetris using real-time hand tracking powered by MediaPipe.
 
