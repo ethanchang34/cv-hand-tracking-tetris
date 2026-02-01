@@ -128,13 +128,6 @@ while True:
             cy = int((wrist.y + mid_base.y) / 2 * h)
 
         # --- Gesture Detection ---
-        # print("Landmarks z-values:")
-        # for i, lm in enumerate(hand_landmarks):
-        #     print(f"{i}: x={lm.x:.2f}, y={lm.y:.2f}, z={lm.z:.2f}")
-        # tilt = abs(hand_landmarks[8].x - hand_landmarks[20].x)
-        # print(f"Tilt: {tilt:.3f}")
-        # print(f"Wrist z: {wrist.z:.3f}, Index z: {idx.z:.3f}, Middle base z: {mid_base.z:.3f}")
-
         if cooldown > 0:
             cooldown -= 1
         else:
@@ -175,33 +168,16 @@ while True:
                 tilted = angle > math.radians(45)
 
                 if tilted:
-                    # Palm vs back logic from forum
-                    # if hand_label == "Left":
-                    #     palm_facing = thumb_x < pinky_x
-                    # else:  # Right hand
-                    #     palm_facing = thumb_x > pinky_x
                     move_right = thumb_x < pinky_x
                     if move_right:
                         gesture_text = "MOVE RIGHT"
                     else:
                         gesture_text = "MOVE LEFT"
 
-                    # if palm_facing:
-                    #     gesture_text = "MOVE RIGHT"
-                    # else:
-                    #     gesture_text = "MOVE LEFT"
                     cooldown = GESTURE_COOLDOWN_FRAMES
         
     trigger_action(gesture_text)
-        # gesture_buffer.append(gesture_text)
 
-    # confirmed = get_confirmed_gesture(gesture_buffer)
-    # if confirmed:
-    #     trigger_action(confirmed)
-    #     gesture_buffer.clear()
-
-    # Display gesture text
-    # display_gesture = confirmed if confirmed else "NEUTRAL"
     cv2.putText(frame, gesture_text, (10, 40),
                 cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
 
