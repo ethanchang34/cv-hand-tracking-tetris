@@ -73,6 +73,7 @@ def detect_gesture(frame):
                 x_px = int(lm.x * w)
                 y_px = int(lm.y * h)
                 cv2.circle(frame, (x_px, y_px), 5, (0, 255, 0), -1)
+            hand_label = hand_landmarker_result.handedness[0][0].category_name
 
             if cooldown > 0:
                 cooldown -= 1
@@ -88,21 +89,26 @@ def detect_gesture(frame):
 
                 # ROTATE (Thumb-Pinky = Clockwise)
                 elif is_pinch_between(hand_landmarks, w, h, 4, 20):
-                    gesture_text = "ROTATE CW"
+                    if hand_label == "Left":
+                        gesture_text = "ROTATE CW"
+                    else:
+                        gesture_text = "ROTATE CCW"
                     cooldown = GESTURE_COOLDOWN_FRAMES
                 
                 # ROTATE (Thumb-Index = Counter-Clockwise)
                 elif is_pinch_between(hand_landmarks, w, h, 4, 8):
-                    gesture_text = "ROTATE CCW"
+                    if hand_label == "Left":
+                        gesture_text = "ROTATE CCW"
+                    else:
+                        gesture_text = "ROTATE CW"
                     cooldown = GESTURE_COOLDOWN_FRAMES
 
                 # MOVE (Horizontal Motion)
                 else:
-                    hand_label = hand_landmarker_result.handedness[0][0].category_name
                     thumb_x = hand_landmarks[4].x
                     pinky_x = hand_landmarks[20].x
 
-                    # How sideways the hand is (bigger = more slap-like)
+                    # How sideways the hand is
                     index_mcp = hand_landmarks[5]
                     pinky_mcp = hand_landmarks[17]
                     dx = pinky_mcp.x - index_mcp.x
