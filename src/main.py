@@ -4,6 +4,7 @@ import mediapipe as mp
 
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+from collections import deque
 
 # === Settings ===
 MODEL_PATH = "models/hand_landmarker.task"
@@ -42,20 +43,55 @@ def isFist(lm):
     ]
     return not any(fingers)
 
+def isOpenHand(lm):
+    fingers = [
+        isFingerExtended(lm[8], lm[6]),   # index
+        isFingerExtended(lm[12], lm[10]), # middle
+        isFingerExtended(lm[16], lm[14]), # ring
+        isFingerExtended(lm[20], lm[18]), # pinky
+    ]
+    return all(fingers)
+
 def isPinch(lm, w, h, threshold=40):
     idx = (int(lm[8].x * w), int(lm[8].y * h))
     thumb = (int(lm[4].x * w), int(lm[4].y * h))
     return np.linalg.norm(np.array(idx) - np.array(thumb)) < threshold
 
+GESTURE_WINDOW = 7
+gesture_buffer = deque(maxlen=GESTURE_WINDOW)
+
+def get_confirmed_gesture(buffer):
+    if not buffer:
+        return None
+
+    counts = {}
+    for g in buffer:
+        if g and g != "NEUTRAL":
+            counts[g] = counts.get(g, 0) + 1
+
+    if not counts:
+        return None
+
+    gesture, count = max(counts.items(), key=lambda x: x[1])
+
+    if count >= len(buffer) * 0.6:
+        return gesture
+
+    return None
+
+def trigger_action(gesture):
+    print(f"Action triggered: {gesture}")
+
 frame_count = 0  # For monotonically increasing timestamp
 prev_cx = None
-GESTURE_COOLDOWN_FRAMES = 8
+GESTURE_COOLDOWN_FRAMES = 30
 cooldown = 0
 
 while True:
     ret, frame = cap.read()
     if not ret:
         break
+    frame = cv2.flip(frame, 1)
 
     h, w, _ = frame.shape
 
@@ -90,11 +126,19 @@ while True:
             cx = int((wrist.x + mid_base.x) / 2 * w)
             cy = int((wrist.y + mid_base.y) / 2 * h)
 
-        # --- Gesture Detection (Intent-Based) ---
+        # --- Gesture Detection ---
+        # print("Landmarks z-values:")
+        # for i, lm in enumerate(hand_landmarks):
+        #     print(f"{i}: x={lm.x:.2f}, y={lm.y:.2f}, z={lm.z:.2f}")
+        # tilt = abs(hand_landmarks[8].x - hand_landmarks[20].x)
+        # print(f"Tilt: {tilt:.3f}")
+        # print(f"Wrist z: {wrist.z:.3f}, Index z: {idx.z:.3f}, Middle base z: {mid_base.z:.3f}")
 
         if cooldown > 0:
             cooldown -= 1
         else:
+            gesture_text = "NEUTRAL"
+
             # 1. DROP (Fist)
             if isFist(hand_landmarks):
                 gesture_text = "DROP"
@@ -113,19 +157,45 @@ while True:
 
             # 3. MOVE (Horizontal Motion)
             else:
-                if prev_cx is not None:
-                    dx = cx - prev_cx
+                hand_label = hand_landmarker_result.handedness[0][0].category_name
+                thumb = hand_landmarks[4]
+                pinky = hand_landmarks[20]
 
-                    if dx > 25:
+                thumb_x = thumb.x
+                pinky_x = pinky.x
+
+                 # How sideways the hand is (bigger = more slap-like)
+                tilt = abs(thumb_x - pinky_x)
+                tilted = tilt > 0.12   # 🔧 tune this (0.1–0.15 is typical)
+
+                if tilted:
+                    # Palm vs back logic from forum
+                    # if hand_label == "Left":
+                    #     palm_facing = thumb_x < pinky_x
+                    # else:  # Right hand
+                    #     palm_facing = thumb_x > pinky_x
+                    move_right = thumb_x < pinky_x
+                    if move_right:
                         gesture_text = "MOVE RIGHT"
-                        cooldown = GESTURE_COOLDOWN_FRAMES
-                    elif dx < -25:
+                    else:
                         gesture_text = "MOVE LEFT"
-                        cooldown = GESTURE_COOLDOWN_FRAMES
 
-                prev_cx = cx
+                    # if palm_facing:
+                    #     gesture_text = "MOVE RIGHT"
+                    # else:
+                    #     gesture_text = "MOVE LEFT"
+                    cooldown = GESTURE_COOLDOWN_FRAMES
+        
+    trigger_action(gesture_text)
+        # gesture_buffer.append(gesture_text)
+
+    # confirmed = get_confirmed_gesture(gesture_buffer)
+    # if confirmed:
+    #     trigger_action(confirmed)
+    #     gesture_buffer.clear()
 
     # Display gesture text
+    # display_gesture = confirmed if confirmed else "NEUTRAL"
     cv2.putText(frame, gesture_text, (10, 40),
                 cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
 
