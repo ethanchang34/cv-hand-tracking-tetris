@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import mediapipe as mp
+import math
 
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
@@ -165,8 +166,13 @@ while True:
                 pinky_x = pinky.x
 
                  # How sideways the hand is (bigger = more slap-like)
-                tilt = abs(thumb_x - pinky_x)
-                tilted = tilt > 0.12   # 🔧 tune this (0.1–0.15 is typical)
+                index_mcp = hand_landmarks[5]
+                pinky_mcp = hand_landmarks[17]
+                dx = pinky_mcp.x - index_mcp.x
+                dy = pinky_mcp.y - index_mcp.y
+                angle = abs(math.atan2(dy, dx))  # radians
+                angle = min(angle, math.pi - angle)  # mirror left/right
+                tilted = angle > math.radians(45)
 
                 if tilted:
                     # Palm vs back logic from forum
