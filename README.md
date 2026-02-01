@@ -12,7 +12,7 @@ Play Tetris using real-time hand tracking powered by MediaPipe.
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/cv-hand-tracking-tetris.git
+git clone https://github.com/ethanchang34/cv-hand-tracking-tetris.git
 cd cv-hand-tracking-tetris
 ```
 
