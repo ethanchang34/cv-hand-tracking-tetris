@@ -53,10 +53,10 @@ def isOpenHand(lm):
     ]
     return all(fingers)
 
-def isPinch(lm, w, h, threshold=40):
-    idx = (int(lm[8].x * w), int(lm[8].y * h))
-    thumb = (int(lm[4].x * w), int(lm[4].y * h))
-    return np.linalg.norm(np.array(idx) - np.array(thumb)) < threshold
+def is_pinch_between(lm, w, h, i, j, threshold=40):
+    p1 = np.array([lm[i].x * w, lm[i].y * h])
+    p2 = np.array([lm[j].x * w, lm[j].y * h])
+    return np.linalg.norm(p1 - p2) < threshold
 
 GESTURE_WINDOW = 7
 gesture_buffer = deque(maxlen=GESTURE_WINDOW)
@@ -86,6 +86,7 @@ def trigger_action(gesture):
 frame_count = 0  # For monotonically increasing timestamp
 prev_cx = None
 GESTURE_COOLDOWN_FRAMES = 30
+NEUTRAL_GESTURE_COOLDOWN_FRAMES = 10
 cooldown = 0
 
 while True:
@@ -132,6 +133,7 @@ while True:
             cooldown -= 1
         else:
             gesture_text = "NEUTRAL"
+            cooldown = NEUTRAL_GESTURE_COOLDOWN_FRAMES
 
             # 1. DROP (Fist)
             if isFist(hand_landmarks):
@@ -139,12 +141,16 @@ while True:
                 cooldown = GESTURE_COOLDOWN_FRAMES
 
             # 2. ROTATE (Pinch + Handedness)
-            elif isPinch(hand_landmarks, w, h):
-                handedness = hand_landmarker_result.handedness[0][0].category_name
+            elif (
+                is_pinch_between(hand_landmarks, w, h, 4, 20) or  # thumb–pinky
+                is_pinch_between(hand_landmarks, w, h, 4, 8)      # thumb–index
+            ):
+                pinch_thumb_pinky = is_pinch_between(hand_landmarks, w, h, 4, 20)
+                pinch_thumb_index = is_pinch_between(hand_landmarks, w, h, 4, 8)
 
-                if handedness == "Right":
+                if pinch_thumb_pinky:
                     gesture_text = "ROTATE CW"
-                else:
+                elif pinch_thumb_index:
                     gesture_text = "ROTATE CCW"
 
                 cooldown = GESTURE_COOLDOWN_FRAMES
