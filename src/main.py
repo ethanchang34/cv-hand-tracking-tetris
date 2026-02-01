@@ -2,7 +2,6 @@ import cv2
 import pygame
 import numpy as np
 from tetris import Game, SCREEN_WIDTH, SCREEN_HEIGHT
-from gestures import detect_gesture
 
 # --- Pygame init ---
 pygame.init()
@@ -10,10 +9,22 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Tetris with Hand Gestures")
 clock = pygame.time.Clock()
 
+# --- Loading screen ---
+font = pygame.font.Font(None, 36)
+screen.fill((0, 0, 0))
+loading_text = font.render("Loading MediaPipe model...", True, (255, 255, 255))
+screen.blit(loading_text, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2))
+pygame.display.flip()
+
 # --- Open webcam ---
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
     raise RuntimeError("Could not open webcam")
+
+# --- Initialize gesture detection (loads ML model - can take a few seconds) ---
+print("Loading hand tracking model...")
+from gestures import detect_gesture
+print("Model loaded!")
 
 # --- Game setup ---
 game = Game()
@@ -42,8 +53,8 @@ screen_height = screen_info.current_h
 # Calculate desired webcam window size and position
 window_width = int(screen_width * 1.25)
 window_height = (screen_height * 2) // 3 
-window_x = 0                             
-window_y = (screen_height - window_height) // 2
+window_x = screen_width // 4
+window_y = (screen_height) // 2
 
 # --- Setup webcam window ---
 window_name = "Hand Gesture Detection"

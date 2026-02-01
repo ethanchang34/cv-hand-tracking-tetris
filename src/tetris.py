@@ -119,7 +119,7 @@ class Game:
         self.game_over = False
         self.paused = False
         self.fall_time = 0
-        self.fall_speed = 500  # milliseconds
+        self.fall_speed = 750  # milliseconds
 
     def new_piece(self):
         shape = random.choice(list(SHAPES.keys()))
